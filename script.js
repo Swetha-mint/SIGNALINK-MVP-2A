@@ -105,8 +105,8 @@ async function loadSession(){
   renderValidation();
   sessionStatus.textContent="Session loaded · "+samples.length+" samples · saved "+new Date(data.savedAt).toLocaleString();
 }
-document.querySelector("#saveSession").addEventListener("click",()=>saveSession().catch(e=>{console.error(e);sessionStatus.textContent="Save failed."}));
-document.querySelector("#loadSession").addEventListener("click",()=>loadSession().catch(e=>{console.error(e);sessionStatus.textContent="Load failed."}));
+const saveButton=document.querySelector("#saveSession"); if(saveButton) saveButton.addEventListener("click",()=>saveSession().catch(e=>{console.error(e);if(sessionStatus)sessionStatus.textContent="Save failed."}));
+const loadButton=document.querySelector("#loadSession"); if(loadButton) loadButton.addEventListener("click",()=>loadSession().catch(e=>{console.error(e);if(sessionStatus)sessionStatus.textContent="Load failed."}));
 
 function capture(label){
   if(!lastData){validationResult.textContent="No hand detected. Put one hand in view first.";return}
@@ -116,8 +116,8 @@ function capture(label){
   renderValidation();
 }
 document.querySelectorAll(".capture").forEach(b=>b.addEventListener("click",()=>capture(b.dataset.label)));
-document.querySelector("#clearSamples").addEventListener("click",()=>{samples=[];renderValidation();sessionStatus.textContent="Current session cleared. Saved session remains available until overwritten."});
-document.querySelector("#exportSamples").addEventListener("click",()=>{
+const clearButton=document.querySelector("#clearSamples"); if(clearButton) clearButton.addEventListener("click",()=>{samples=[];renderValidation();if(sessionStatus)sessionStatus.textContent="Current session cleared. Saved session remains available until overwritten."});
+const exportButton=document.querySelector("#exportSamples"); if(exportButton) exportButton.addEventListener("click",()=>{
   if(!samples.length){validationResult.textContent="No samples to export.";return}
   const testRows=samples.filter(s=>s.split==="test");
   const rows=testRows.map((s,i)=>({index:i+1,label:s.label,split:s.split,rawPrediction:predict(s,"raw"),compactPrediction:predict(s,"compact"),raw:s.raw,compact:s.compact,image:s.image||null}));
