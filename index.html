@@ -48,6 +48,9 @@
 </div>
 <div class="table-wrap"><table><thead><tr><th>Gesture</th><th>Train</th><th>Test</th></tr></thead><tbody id="sampleTable"><tr><td>HELLO</td><td>0</td><td>0</td></tr><tr><td>YES</td><td>0</td><td>0</td></tr><tr><td>STOP</td><td>0</td><td>0</td></tr></tbody></table></div>
 <div class="result" id="validationResult">Waiting for labelled samples.</div>
+<h3 class="audit-title">Sample-Level Audit</h3>
+<p class="audit-note">Each held-out sample keeps a snapshot, true label, and both classifier predictions. This shows exactly which captured sample produced each accuracy result.</p>
+<div class="table-wrap"><table><thead><tr><th>#</th><th>Snapshot</th><th>True</th><th>Split</th><th>21-Landmark</th><th>147-Bit</th></tr></thead><tbody id="auditTable"><tr><td colspan="6">No samples yet.</td></tr></tbody></table></div>
 </section>
 
 <section class="card full"><small>06 · PIPELINE</small><div class="pipe"><b>CAMERA</b>→<b>21 LANDMARKS</b>→<b>NORMALIZE</b>→<b>7-BIT QUANTIZE</b>→<b>3×7 TOKEN</b>→<b>CLASSIFY</b>→<b>VERIFY RTL</b></div></section>
