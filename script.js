@@ -82,6 +82,15 @@ function capture(label){
 }
 document.querySelectorAll(".capture").forEach(b=>b.addEventListener("click",()=>capture(b.dataset.label)));
 document.querySelector("#clearSamples").addEventListener("click",()=>{samples=[];renderValidation()});
+document.querySelector("#exportSamples").addEventListener("click",()=>{
+  if(!samples.length){validationResult.textContent="No samples to export.";return}
+  const testRows=samples.filter(s=>s.split==="test");
+  const rows=testRows.map((s,i)=>({index:i+1,label:s.label,split:s.split,rawPrediction:predict(s,"raw"),compactPrediction:predict(s,"compact"),raw:s.raw,compact:s.compact,image:s.image||null}));
+  const payload={exportedAt:new Date().toISOString(),method:"First 6 samples per gesture train a nearest-centroid classifier; later samples are held-out tests.",samples:rows};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="signalink-mvp-2a-validation.json";a.click();URL.revokeObjectURL(url);
+  validationResult.textContent="Dataset exported: "+rows.length+" held-out samples with snapshots, vectors, labels, and predictions.";
+});
 
 function process(r){
   if(!r.landmarks.length){
