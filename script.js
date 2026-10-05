@@ -9,6 +9,8 @@ const rawAccuracy=document.querySelector("#rawAccuracy"),compactAccuracy=documen
 const rawDetail=document.querySelector("#rawDetail"),compactDetail=document.querySelector("#compactDetail");
 const trainingCount=document.querySelector("#trainingCount"),testingCount=document.querySelector("#testingCount"),sampleTable=document.querySelector("#sampleTable");
 let lm,lastData=null,samples=[],mediaStream=null,animationId=null,running=false;
+const DB_NAME="signalink-mvp-2a"; const DB_VERSION=1; const STORE="sessions"; const SESSION_KEY="current";
+const sessionStatus=document.querySelector("#sessionStatus");
 const model="https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
 const labels=["HELLO","YES","STOP"];
 
@@ -73,6 +75,39 @@ function renderValidation(){
   auditTable.innerHTML=rows.map(r=>{const rawOk=r.raw===r.s.label,compactOk=r.compact===r.s.label;return "<tr><td>"+(r.i+1)+"</td><td>"+(r.s.image?'<img class="sample-thumb" src="'+r.s.image+'" alt="Captured '+r.s.label+' sample">':"—")+"</td><td>"+r.s.label+"</td><td>"+r.s.split.toUpperCase()+"</td><td class='"+(rawOk?"ok":"bad")+"'>"+r.raw+" "+(rawOk?"✓":"✗")+"</td><td class='"+(compactOk?"ok":"bad")+"'>"+r.compact+" "+(compactOk?"✓":"✗")+"</td></tr>"}).join("");
   validationResult.textContent="Held-out comparison: 21-landmark baseline "+rawHits+"/"+testCount+" · 147-bit compact "+compactHits+"/"+testCount+".";
 }
+function openSessionDB(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(DB_NAME,DB_VERSION);
+    req.onupgradeneeded=()=>req.result.createObjectStore(STORE);
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+async function saveSession(){
+  const db=await openSessionDB();
+  await new Promise((resolve,reject)=>{
+    const tx=db.transaction(STORE,"readwrite");
+    tx.objectStore(STORE).put({savedAt:new Date().toISOString(),samples},SESSION_KEY);
+    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
+  });
+  db.close();
+  sessionStatus.textContent="Session saved · "+samples.length+" samples · "+new Date().toLocaleString();
+}
+async function loadSession(){
+  const db=await openSessionDB();
+  const data=await new Promise((resolve,reject)=>{
+    const tx=db.transaction(STORE,"readonly"),req=tx.objectStore(STORE).get(SESSION_KEY);
+    req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+  });
+  db.close();
+  if(!data){sessionStatus.textContent="No saved session found.";return}
+  samples=Array.isArray(data.samples)?data.samples:[];
+  renderValidation();
+  sessionStatus.textContent="Session loaded · "+samples.length+" samples · saved "+new Date(data.savedAt).toLocaleString();
+}
+document.querySelector("#saveSession").addEventListener("click",()=>saveSession().catch(e=>{console.error(e);sessionStatus.textContent="Save failed."}));
+document.querySelector("#loadSession").addEventListener("click",()=>loadSession().catch(e=>{console.error(e);sessionStatus.textContent="Load failed."}));
+
 function capture(label){
   if(!lastData){validationResult.textContent="No hand detected. Put one hand in view first.";return}
   const same=samples.filter(s=>s.label===label);
@@ -81,7 +116,7 @@ function capture(label){
   renderValidation();
 }
 document.querySelectorAll(".capture").forEach(b=>b.addEventListener("click",()=>capture(b.dataset.label)));
-document.querySelector("#clearSamples").addEventListener("click",()=>{samples=[];renderValidation()});
+document.querySelector("#clearSamples").addEventListener("click",()=>{samples=[];renderValidation();sessionStatus.textContent="Current session cleared. Saved session remains available until overwritten."});
 document.querySelector("#exportSamples").addEventListener("click",()=>{
   if(!samples.length){validationResult.textContent="No samples to export.";return}
   const testRows=samples.filter(s=>s.split==="test");
