@@ -8,7 +8,7 @@ const sampleStatus=document.querySelector("#sampleStatus"),validationResult=docu
 const rawAccuracy=document.querySelector("#rawAccuracy"),compactAccuracy=document.querySelector("#compactAccuracy");
 const rawDetail=document.querySelector("#rawDetail"),compactDetail=document.querySelector("#compactDetail");
 const trainingCount=document.querySelector("#trainingCount"),testingCount=document.querySelector("#testingCount"),sampleTable=document.querySelector("#sampleTable");
-let lm,lastData=null,samples=[];
+let lm,lastData=null,samples=[],mediaStream=null,animationId=null,running=false;
 const model="https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
 const labels=["HELLO","YES","STOP"];
 
@@ -109,12 +109,25 @@ function process(r){
   lastData={raw:vector21(a),compact:vector7(a)};
 }
 async function run(){
+  if(running)return;
   status.textContent="LOADING";
   const f=await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm");
   lm=await HandLandmarker.createFromOptions(f,{baseOptions:{modelAssetPath:model},runningMode:"VIDEO",numHands:1});
-  const s=await navigator.mediaDevices.getUserMedia({video:true,audio:false});v.srcObject=s;await v.play();
-  msg.style.display="grid";msg.textContent="No hand detected.";status.textContent="LIVE";start.textContent="CAMERA RUNNING";
-  (function loop(){const r=lm.detectForVideo(v,performance.now());process(r);requestAnimationFrame(loop)})()
+  mediaStream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});v.srcObject=mediaStream;await v.play();
+  msg.style.display="grid";msg.textContent="No hand detected.";status.textContent="LIVE";start.textContent="CAMERA RUNNING";running=true;start.disabled=true;document.querySelector("#stopCamera").disabled=false;
+  (function loop(){if(!running)return;const r=lm.detectForVideo(v,performance.now());process(r);animationId=requestAnimationFrame(loop)})()
 }
+function stopCamera(){
+  running=false;
+  if(animationId)cancelAnimationFrame(animationId);
+  animationId=null;
+  if(mediaStream)mediaStream.getTracks().forEach(track=>track.stop());
+  mediaStream=null;
+  v.pause();v.srcObject=null;
+  clearDraw();lastData=null;countOut.textContent="0 / 21";gestureOut.textContent="—";rmseOut.textContent="—";
+  msg.style.display="grid";msg.textContent="Camera stopped.";
+  status.textContent="MODEL OFF";start.textContent="ALLOW CAMERA & START";start.disabled=false;document.querySelector("#stopCamera").disabled=true;
+}
+document.querySelector("#stopCamera").onclick=stopCamera;
 start.onclick=()=>run().catch(e=>{console.error(e);status.textContent="START FAILED";msg.style.display="grid";msg.textContent="Use HTTPS/localhost and allow camera access."});
 renderValidation();
