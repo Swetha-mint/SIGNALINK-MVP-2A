@@ -4,7 +4,7 @@ const v=document.querySelector("#video"),c=document.querySelector("#canvas"),x=c
 const status=document.querySelector("#status"),start=document.querySelector("#start"),msg=document.querySelector("#msg"),matrix=document.querySelector("#matrix");
 const gestureOut=document.querySelector("#gesture"),countOut=document.querySelector("#count"),rmseOut=document.querySelector("#rmse");
 const before=document.querySelector("#before"),after=document.querySelector("#after"),result=document.querySelector("#result");
-const sampleStatus=document.querySelector("#sampleStatus"),validationResult=document.querySelector("#validationResult");
+const sampleStatus=document.querySelector("#sampleStatus"),validationResult=document.querySelector("#validationResult"),auditTable=document.querySelector("#auditTable");
 const rawAccuracy=document.querySelector("#rawAccuracy"),compactAccuracy=document.querySelector("#compactAccuracy");
 const rawDetail=document.querySelector("#rawDetail"),compactDetail=document.querySelector("#compactDetail");
 const trainingCount=document.querySelector("#trainingCount"),testingCount=document.querySelector("#testingCount"),sampleTable=document.querySelector("#sampleTable");
@@ -59,23 +59,25 @@ function renderValidation(){
   const counts=Object.fromEntries(labels.map(l=>[l,{train:0,test:0}]));
   samples.forEach(s=>counts[s.label][s.split]++);
   sampleTable.innerHTML=labels.map(l=>"<tr><td>"+l+"</td><td>"+counts[l].train+"</td><td>"+counts[l].test+"</td></tr>").join("");
-  const train=samples.filter(s=>s.split==="train").length,test=samples.filter(s=>s.split==="test");
-  trainingCount.textContent=train;testingCount.textContent=test;
-  sampleStatus.textContent=samples.length+" samples · "+train+" training · "+test+" held-out testing";
-  if(test.length===0){rawAccuracy.textContent=compactAccuracy.textContent="—";rawDetail.textContent=compactDetail.textContent="0 / 0 test samples";validationResult.textContent="Capture more samples. First 6 per gesture train; later samples test.";return}
-  const rawHits=test.filter(s=>predict(s,"raw")===s.label).length;
-  const compactHits=test.filter(s=>predict(s,"compact")===s.label).length;
-  rawAccuracy.textContent=Math.round(rawHits/test.length*100)+"%";
-  compactAccuracy.textContent=Math.round(compactHits/test.length*100)+"%";
-  rawDetail.textContent=rawHits+" / "+test.length+" test samples";
-  compactDetail.textContent=compactHits+" / "+test.length+" test samples";
-  validationResult.textContent="Held-out comparison: 21-landmark baseline "+rawHits+"/"+test.length+" · 147-bit compact "+compactHits+"/"+test.length+".";
+  const trainCount=samples.filter(s=>s.split==="train").length,testRows=samples.filter(s=>s.split==="test"),testCount=testRows.length;
+  trainingCount.textContent=trainCount;testingCount.textContent=testCount;
+  sampleStatus.textContent=samples.length+" samples · "+trainCount+" training · "+testCount+" held-out testing";
+  if(testCount===0){rawAccuracy.textContent=compactAccuracy.textContent="—";rawDetail.textContent=compactDetail.textContent="0 / 0 test samples";auditTable.innerHTML='<tr><td colspan="6">No held-out samples yet.</td></tr>';validationResult.textContent="Capture more samples. First 6 per gesture train; later samples test.";return}
+  const rows=testRows.map((s,i)=>({s,i,raw:predict(s,"raw"),compact:predict(s,"compact")}));
+  const rawHits=rows.filter(r=>r.raw===r.s.label).length;
+  const compactHits=rows.filter(r=>r.compact===r.s.label).length;
+  rawAccuracy.textContent=Math.round(rawHits/testCount*100)+"%";
+  compactAccuracy.textContent=Math.round(compactHits/testCount*100)+"%";
+  rawDetail.textContent=rawHits+" / "+testCount+" test samples";
+  compactDetail.textContent=compactHits+" / "+testCount+" test samples";
+  auditTable.innerHTML=rows.map(r=>{const rawOk=r.raw===r.s.label,compactOk=r.compact===r.s.label;return "<tr><td>"+(r.i+1)+"</td><td>"+(r.s.image?'<img class="sample-thumb" src="'+r.s.image+'" alt="Captured '+r.s.label+' sample">':"—")+"</td><td>"+r.s.label+"</td><td>"+r.s.split.toUpperCase()+"</td><td class='"+(rawOk?"ok":"bad")+"'>"+r.raw+" "+(rawOk?"✓":"✗")+"</td><td class='"+(compactOk?"ok":"bad")+"'>"+r.compact+" "+(compactOk?"✓":"✗")+"</td></tr>"}).join("");
+  validationResult.textContent="Held-out comparison: 21-landmark baseline "+rawHits+"/"+testCount+" · 147-bit compact "+compactHits+"/"+testCount+".";
 }
 function capture(label){
   if(!lastData){validationResult.textContent="No hand detected. Put one hand in view first.";return}
   const same=samples.filter(s=>s.label===label);
   const split=same.length<6?"train":"test";
-  samples.push({label,split,raw:lastData.raw.slice(),compact:lastData.compact.slice()});
+  const snap=document.createElement("canvas");snap.width=320;snap.height=240;const sx=snap.getContext("2d");sx.drawImage(v,0,0,snap.width,snap.height);samples.push({label,split,raw:lastData.raw.slice(),compact:lastData.compact.slice(),image:snap.toDataURL("image/jpeg",0.65)});
   renderValidation();
 }
 document.querySelectorAll(".capture").forEach(b=>b.addEventListener("click",()=>capture(b.dataset.label)));
