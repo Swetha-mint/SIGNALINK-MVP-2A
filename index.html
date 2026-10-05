@@ -1,1 +1,57 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SIGNALINK MVP-2A</title><link rel="stylesheet" href="style.css"></head><body><header><div><small>SET 2A · HARDWARE EFFICIENCY</small><h1>LANDMARK TOKENIZER</h1><p>Observe how hand landmarks become a compact hardware-oriented representation.</p></div><b id="status">MODEL OFF</b></header><main><section class="card"><div class="head"><div><small>01 · INPUT</small><h2>Live Hand Landmarks</h2></div><button id="start">ALLOW CAMERA & START</button></div><div class="cam"><video id="video" autoplay playsinline muted></video><canvas id="canvas"></canvas><span id="msg">Camera is off.</span></div><div class="stats"><div>GESTURE<strong id="gesture">—</strong></div><div>LANDMARKS<strong id="count">0 / 21</strong></div><div>FORMAT<strong>3 × 7</strong></div></div></section><section class="card"><small>02 · REPRESENTATION</small><h2>Compact 3 × 7 Matrix</h2><p>7 representative points × X/Y/Z, normalized and quantized to 7 bits.</p><div id="matrix"></div><div class="legend">W wrist · TT thumb tip · IT index tip · MT middle tip · RT ring tip · PT pinky tip · PC palm centre</div></section><section class="card"><small>03 · MEASURE</small><h2>Information Budget</h2><div class="metrics"><div>RAW FLOAT32<strong>2016 bits</strong></div><div>QUANTIZED<strong>147 bits</strong></div><div>REDUCTION<strong>92.7%</strong></div><div>RMSE<strong id="rmse">—</strong></div></div><div class="bar"><i></i></div><p>Fixed-width quantization is not lossless compression. RMSE shows the representation error.</p></section><section class="card"><small>04 · REVERSIBLE LOGIC</small><h2>Toffoli-style Bit Transform</h2><p>Classical reversible mapping: target bit XORs with two control bits. Length stays unchanged.</p><label>BEFORE</label><code id="before">—</code><label>AFTER</label><code id="after">—</code><div class="result" id="result">Waiting for data.</div></section><section class="card full"><small>05 · PIPELINE</small><div class="pipe"><b>CAMERA</b>→<b>21 LANDMARKS</b>→<b>NORMALIZE</b>→<b>7-BIT QUANTIZE</b>→<b>3×7 TOKEN</b>→<b>REVERSIBLE LOGIC</b></div></section></main><footer>Orange · White · Black — Sense → Process → Communicate → Assist</footer><script type="module" src="script.js"></script></body></html>
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SIGNALINK MVP-2A · Representation Validation</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header><div><small>SET 2A · REPRESENTATION VALIDATION</small><h1>LANDMARK TOKENIZER</h1><p>Test whether the 147-bit representation preserves gesture discrimination.</p></div><b id="status">MODEL OFF</b></header>
+<main>
+<section class="card">
+<div class="head"><div><small>01 · INPUT</small><h2>Live Hand Landmarks</h2></div><button id="start">ALLOW CAMERA & START</button></div>
+<div class="cam"><video id="video" autoplay playsinline muted></video><canvas id="canvas"></canvas><span id="msg">Camera is off.</span></div>
+<div class="stats"><div>GESTURE<strong id="gesture">—</strong></div><div>LANDMARKS<strong id="count">0 / 21</strong></div><div>FORMAT<strong>3 × 7</strong></div></div>
+</section>
+
+<section class="card">
+<small>02 · REPRESENTATION</small><h2>Compact 3 × 7 Matrix</h2>
+<p>7 representative points × X/Y/Z, normalized and quantized to 7 bits.</p>
+<div id="matrix"></div><div class="legend">W wrist · TT thumb tip · IT index tip · MT middle tip · RT ring tip · PT pinky tip · PC palm centre</div>
+</section>
+
+<section class="card">
+<small>03 · MEASURE</small><h2>Information Budget</h2>
+<div class="metrics"><div>RAW FLOAT32<strong>2016 bits</strong></div><div>QUANTIZED<strong>147 bits</strong></div><div>REDUCTION<strong>92.7%</strong></div><div>RMSE<strong id="rmse">—</strong></div></div>
+<div class="bar"><i></i></div>
+<p>2016 → 147 combines feature selection and 7-bit quantization. It is not lossless compression.</p>
+</section>
+
+<section class="card">
+<small>04 · REVERSIBLE LOGIC</small><h2>Toffoli-style Bit Transform</h2>
+<p>Classical reversible mapping: target bit XORs with two control bits. Length stays unchanged.</p>
+<label>BEFORE</label><code id="before">—</code><label>AFTER</label><code id="after">—</code>
+<div class="result" id="result">Waiting for data.</div>
+</section>
+
+<section class="card full validation">
+<small>05 · VALIDATION EXPERIMENT</small><h2>Does 147 Bits Preserve Gesture Discrimination?</h2>
+<p>Capture labelled samples. The first <b>6</b> samples of each gesture train a nearest-centroid classifier; later samples become held-out tests.</p>
+<div class="capture-grid">
+<button class="capture" data-label="HELLO">CAPTURE HELLO</button>
+<button class="capture" data-label="YES">CAPTURE YES</button>
+<button class="capture" data-label="STOP">CAPTURE STOP</button>
+<button id="clearSamples" class="secondary">CLEAR SAMPLES</button>
+</div>
+<div class="sample-status" id="sampleStatus">0 samples · Capture 6+ per gesture.</div>
+<div class="validation-grid">
+<div><span>21-LANDMARK BASELINE</span><strong id="rawAccuracy">—</strong><small id="rawDetail">0 / 0 test samples</small></div>
+<div><span>147-BIT COMPACT</span><strong id="compactAccuracy">—</strong><small id="compactDetail">0 / 0 test samples</small></div>
+<div><span>TRAINING</span><strong id="trainingCount">0</strong><small>samples used for centroids</small></div>
+<div><span>TESTING</span><strong id="testingCount">0</strong><small>held-out samples</small></div>
+</div>
+<div class="table-wrap"><table><thead><tr><th>Gesture</th><th>Train</th><th>Test</th></tr></thead><tbody id="sampleTable"><tr><td>HELLO</td><td>0</td><td>0</td></tr><tr><td>YES</td><td>0</td><td>0</td></tr><tr><td>STOP</td><td>0</td><td>0</td></tr></tbody></table></div>
+<div class="result" id="validationResult">Waiting for labelled samples.</div>
+</section>
+
+<section class="card full"><small>06 · PIPELINE</small><div class="pipe"><b>CAMERA</b>→<b>21 LANDMARKS</b>→<b>NORMALIZE</b>→<b>7-BIT QUANTIZE</b>→<b>3×7 TOKEN</b>→<b>CLASSIFY</b>→<b>VERIFY RTL</b></div></section>
+</main>
+<footer>Orange · White · Black — Sense → Process → Communicate → Assist</footer>
+<script type="module" src="script.js"></script>
+</body></html>
