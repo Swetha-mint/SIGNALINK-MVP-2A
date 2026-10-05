@@ -10,7 +10,7 @@ const rawDetail=document.querySelector("#rawDetail"),compactDetail=document.quer
 const trainingCount=document.querySelector("#trainingCount"),testingCount=document.querySelector("#testingCount"),sampleTable=document.querySelector("#sampleTable");
 let lm,lastData=null,samples=[],mediaStream=null,animationId=null,running=false;
 const DB_NAME="signalink-mvp-2a"; const DB_VERSION=1; const STORE="sessions"; const SESSION_KEY="current";
-const sessionStatus=document.querySelector("#sessionStatus");
+const sessionStatus=document.querySelector("#sessionStatus"); const toast=document.querySelector("#toast"); let toastTimer=null;
 const model="https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
 const labels=["HELLO","YES","STOP"];
 
@@ -75,6 +75,7 @@ function renderValidation(){
   auditTable.innerHTML=rows.map(r=>{const rawOk=r.raw===r.s.label,compactOk=r.compact===r.s.label;return "<tr><td>"+(r.i+1)+"</td><td>"+(r.s.image?'<img class="sample-thumb" src="'+r.s.image+'" alt="Captured '+r.s.label+' sample">':"—")+"</td><td>"+r.s.label+"</td><td>"+r.s.split.toUpperCase()+"</td><td class='"+(rawOk?"ok":"bad")+"'>"+r.raw+" "+(rawOk?"✓":"✗")+"</td><td class='"+(compactOk?"ok":"bad")+"'>"+r.compact+" "+(compactOk?"✓":"✗")+"</td></tr>"}).join("");
   validationResult.textContent="Held-out comparison: 21-landmark baseline "+rawHits+"/"+testCount+" · 147-bit compact "+compactHits+"/"+testCount+".";
 }
+function notify(text){if(!toast)return;toast.textContent=text;toast.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove("show"),2200)}
 function openSessionDB(){
   return new Promise((resolve,reject)=>{
     const req=indexedDB.open(DB_NAME,DB_VERSION);
@@ -91,7 +92,7 @@ async function saveSession(){
     tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
   });
   db.close();
-  sessionStatus.textContent="Session saved · "+samples.length+" samples · "+new Date().toLocaleString();
+  sessionStatus.textContent="Session saved · "+samples.length+" samples · "+new Date().toLocaleString(); notify("✓ Session saved");
 }
 async function loadSession(){
   const db=await openSessionDB();
@@ -100,13 +101,13 @@ async function loadSession(){
     req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
   });
   db.close();
-  if(!data){sessionStatus.textContent="No saved session found.";return}
+  if(!data){sessionStatus.textContent="No saved session found."; notify("No saved session found"); return}
   samples=Array.isArray(data.samples)?data.samples:[];
   renderValidation();
-  sessionStatus.textContent="Session loaded · "+samples.length+" samples · saved "+new Date(data.savedAt).toLocaleString();
+  sessionStatus.textContent="Session loaded · "+samples.length+" samples · saved "+new Date(data.savedAt).toLocaleString(); notify("✓ Session loaded");
 }
-const saveButton=document.querySelector("#saveSession"); if(saveButton) saveButton.addEventListener("click",()=>saveSession().catch(e=>{console.error(e);if(sessionStatus)sessionStatus.textContent="Save failed."}));
-const loadButton=document.querySelector("#loadSession"); if(loadButton) loadButton.addEventListener("click",()=>loadSession().catch(e=>{console.error(e);if(sessionStatus)sessionStatus.textContent="Load failed."}));
+const saveButton=document.querySelector("#saveSession"); if(saveButton) saveButton.addEventListener("click",()=>saveSession().catch(e=>{console.error(e);if(sessionStatus)sessionStatus.textContent="Save failed."; notify("Save failed")}));
+const loadButton=document.querySelector("#loadSession"); if(loadButton) loadButton.addEventListener("click",()=>loadSession().catch(e=>{console.error(e);if(sessionStatus)sessionStatus.textContent="Load failed."; notify("Load failed")}));
 
 function capture(label){
   if(!lastData){validationResult.textContent="No hand detected. Put one hand in view first.";return}
@@ -118,13 +119,13 @@ function capture(label){
 document.querySelectorAll(".capture").forEach(b=>b.addEventListener("click",()=>capture(b.dataset.label)));
 const clearButton=document.querySelector("#clearSamples"); if(clearButton) clearButton.addEventListener("click",()=>{samples=[];renderValidation();if(sessionStatus)sessionStatus.textContent="Current session cleared. Saved session remains available until overwritten."});
 const exportButton=document.querySelector("#exportSamples"); if(exportButton) exportButton.addEventListener("click",()=>{
-  if(!samples.length){validationResult.textContent="No samples to export.";return}
+  if(!samples.length){validationResult.textContent="No samples to export.";notify("Nothing to export");return}
   const testRows=samples.filter(s=>s.split==="test");
   const rows=testRows.map((s,i)=>({index:i+1,label:s.label,split:s.split,rawPrediction:predict(s,"raw"),compactPrediction:predict(s,"compact"),raw:s.raw,compact:s.compact,image:s.image||null}));
   const payload={exportedAt:new Date().toISOString(),method:"First 6 samples per gesture train a nearest-centroid classifier; later samples are held-out tests.",samples:rows};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
   const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="signalink-mvp-2a-validation.json";a.click();URL.revokeObjectURL(url);
-  validationResult.textContent="Dataset exported: "+rows.length+" held-out samples with snapshots, vectors, labels, and predictions.";
+  validationResult.textContent="Dataset exported: "+rows.length+" held-out samples with snapshots, vectors, labels, and predictions."; notify("✓ Dataset exported");
 });
 
 function process(r){
